@@ -1,10 +1,12 @@
 package com.example.schedulerteams
 
+import GamesViewModel
 import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -12,9 +14,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -30,23 +33,16 @@ import kotlinx.serialization.json.Json
 import java.io.IOException
 
 class MainActivity : ComponentActivity() {
+    private val gamesViewModel: GamesViewModel by viewModels()
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val jsonString = loadJsonFromAssets(this, "teams.json")
-        val jsonConfig = Json { ignoreUnknownKeys = true }
-        val teamResponse: TeamResponse = jsonConfig.decodeFromString(jsonString)
-        val teamsMap: Map<String, Team> = teamResponse.data.teams.associateBy { it.teamId }
-
-
-        val jsonStringSchedule = loadJsonFromAssets(this, "schedule.json")
-        val jsonConfigSchedule = Json { ignoreUnknownKeys = true }
-        val scheduleResponse: ScheduleResponse = jsonConfigSchedule.decodeFromString(jsonStringSchedule)
-
-        val scheduleList: List<Schedule> = scheduleResponse.data.gameSchedules
+        gamesViewModel.loadData()
         enableEdgeToEdge()
         setContent {
             SchedulerTeamsTheme {
-                ScheduleScreen(scheduleList,teamsMap)
+                ScheduleScreen(gamesViewModel)
             }
         }
     }
@@ -69,7 +65,10 @@ fun loadJsonFromAssets(context: Context, filename: String): String {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ScheduleScreen(scheduleList: List<Schedule>, teamsMap: Map<String, Team>) {
+fun ScheduleScreen(viewModel: GamesViewModel) {
+    val scheduleList by viewModel.scheduleList.observeAsState(emptyList())
+    val teamsMap by viewModel.teamsMap.observeAsState(emptyMap())
+
     LazyColumn {
         scheduleList.groupBy { it.gameTime.substring(0, 7) }
             .forEach { (month, games) ->
@@ -83,29 +82,12 @@ fun ScheduleScreen(scheduleList: List<Schedule>, teamsMap: Map<String, Team>) {
                         textAlign = TextAlign.Center // Centers the text
                     )
                 }
-                items(games) { game ->
-                    GameRow(game, teamsMap)
+                items(games.size) { game ->
+                    GameRow(games[game], teamsMap)
                 }
             }
     }
 }
-
-//@Composable
-//fun GameRow(game: Schedule, teamsMap: Map<String, Team>) {
-//    val homeTeam = teamsMap[game.homeTeam.teamId]
-//    val awayTeam = teamsMap[game.awayTeam.teamId]
-//
-//    Row(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(8.dp)
-//            .background(Color(android.graphics.Color.parseColor("#${homeTeam?.primaryColor ?: "FFFFFF"}")))
-//    ) {
-//        Text(text = awayTeam?.teamName ?: "", modifier = Modifier.weight(1f))
-//        Text(text = "vs", fontWeight = FontWeight.Bold)
-//        Text(text = homeTeam?.teamName ?: "", modifier = Modifier.weight(1f))
-//    }
-//}
 
 @Composable
 fun GameRow(game: Schedule, teamsMap: Map<String, Team>) {
