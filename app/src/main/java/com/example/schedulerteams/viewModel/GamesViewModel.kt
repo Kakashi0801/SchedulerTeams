@@ -16,6 +16,7 @@ class GamesViewModel(application: Application) : AndroidViewModel(application) {
 
     val scheduleList = MutableLiveData<List<Schedule>>()
     val teamsMap = MutableLiveData<Map<String, Team>>()
+    val homeTeamId = "1610612748"
 
 
     private suspend fun loadJsonFromAssets(filename: String): String {
